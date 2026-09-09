@@ -16,7 +16,4 @@ psycopg2
 mysql-connector
 pymssql 
 duckdb
-fdb
-jinja2
-firebirdsql
-firebird-driver
+oracledb

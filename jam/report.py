@@ -159,18 +159,6 @@ class Report(object):
 #                self.report_filename = converted_file_name
 #                self.report_url = self.report_url.replace('.ods', self.ext)
 
-    # def convert_report(self):
-    #     converted = False
-    #     # Call user's on_convert_report
-    #     if hasattr(self, 'on_convert_report') and self.on_convert_report:
-    #         try:
-    #             result = self.on_convert_report(self)
-    #             if result is True:
-    #                 return True
-    #         except Exception as e:
-    #             print(f"on_convert_report error: {e}")
-    #     else:
-    #         print("No on_convert_report found")
     def convert_report(self):
         print(f"=== convert_report START ===")
         print(f"ext: {self.ext}")
@@ -226,7 +214,6 @@ class Report(object):
         
         print(f"Final result: {converted}")
         return converted
-
 
     def convert(self):
         with self.task.lock('$report_conversion'):
