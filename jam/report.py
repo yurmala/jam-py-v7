@@ -369,7 +369,55 @@ class Report(object):
                         if isinstance(value, str):
                             text = tobytes(escape(value).replace('\n', '</text:p><text:p>'))
                         elif isinstance(value, int) or type(value) == float:
-                            text = tobytes(str(value))
+                            # Check by variable name if this is a numeric field
+                            var_name = var.var.decode('utf-8') if isinstance(var.var, bytes) else str(var.var)
+                            if var_name.startswith(('sum_', 'count_')):
+                                # This is a numeric field
+                                num_value = float(value)
+                                display_value = str(value).replace('.', ',')
+                                import re
+                                var_literal_bytes = var.literal if isinstance(var.literal, bytes) else tobytes(var.literal)
+                                start_pos = band_text.find(var_literal_bytes)
+                                if start_pos != -1:
+                                    # Find the beginning of the current cell
+                                    cell_start_pos = band_text.rfind(b'<table:table-cell', 0, start_pos)
+                                    if cell_start_pos != -1:
+                                        # Find the closing cell tag
+                                        cell_end_pos = band_text.find(b'</table:table-cell>', start_pos)
+                                        if cell_end_pos != -1:
+                                            # Extract the ENTIRE cell
+                                            old_cell = band_text[cell_start_pos:cell_end_pos + len(b'</table:table-cell>')]
+                                            # KEY CHANGE: Keep numeric value with dot for ODS
+                                            # ODS uses dot as decimal separator
+                                            ods_numeric_value = str(num_value).replace(',', '.')
+                                            # REPLACEMENT 1: Change value-type attributes to numeric
+                                            new_cell = old_cell.replace(
+                                                b'office:value-type="string"', 
+                                                f'office:value-type="float" office:value="{ods_numeric_value}"'.encode()
+                                            )
+                                            # REPLACEMENT 2: Also replace calcext:value-type if present
+                                            new_cell = new_cell.replace(
+                                                b'calcext:value-type="string"',
+                                                b'calcext:value-type="float"'
+                                            )
+                                            # REPLACEMENT 3: Update cell content
+                                            # Find content between <text:p> and </text:p>
+                                            text_start = new_cell.find(b'<text:p>') + len(b'<text:p>')
+                                            text_end = new_cell.find(b'</text:p>', text_start)
+                                            if text_start != -1 and text_end != -1:
+                                                # Build new cell with updated content
+                                                new_cell_content = new_cell[:text_start] + \
+                                                                  display_value.encode() + \
+                                                                  new_cell[text_end:]
+                                                # Replace old cell
+                                                before = band_text[:cell_start_pos]
+                                                after = band_text[cell_end_pos + len(b'</table:table-cell>'):]
+                                                band_text = before + new_cell_content + after
+
+                                                # Skip further processing for this variable
+                                                continue
+                            # Standard processing for other numbers
+                            text = tobytes(str(value).replace('.', ','))
                         elif type(value) == dict and cell.image:
                             image = value.get('image')
                             text = value.get('text', '')
