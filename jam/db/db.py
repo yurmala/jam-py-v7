@@ -504,13 +504,19 @@ class AbstractDB(object):
                     field_sql = '%s."%s"' % (self.lookup_table_alias(item, field), field.lookup_db_field)
             return field_sql
 
-    def calculated_sql(self, item, field):
-        result = 'SELECT %s("%s") FROM "%s" WHERE %s.%s=%s' % \
+    def calculated_sql(self, item, field, with_as=True):
+        calc_table = self.table_alias(field._calc_item)
+        result = 'SELECT %s("%s") FROM "%s" WHERE %s.%s=%s."%s"' % \
             (field._calc_op, field._calc_field.db_field_name, field._calc_item.table_name,
-            self.table_alias(item), field._calc_item._primary_key_db_field_name, field._calc_on_field.db_field_name)
+            self.table_alias(item), field._calc_item._primary_key_db_field_name,
+            calc_table, field._calc_on_field.db_field_name)
         if field._calc_item._deleted_flag:
-            result = '%s AND "%s"=0' % (result, field._calc_item._deleted_flag_db_field_name)
-        result = '(%s) %s %s' % (result, self.FIELD_AS, self.identifier_case(field.field_name))
+            result = '%s AND %s."%s"=0' % (result, calc_table,
+                field._calc_item._deleted_flag_db_field_name)
+        if with_as:
+            result = '(%s) %s %s' % (result, self.FIELD_AS, self.identifier_case(field.field_name))
+        elif not with_as:
+            result = '(%s)' % result
         return result
 
     '''def fields_clause(self, item, query, fields):
@@ -588,7 +594,15 @@ class AbstractDB(object):
         for i, field in enumerate(fields):
             if field.calculated:
                 if query.expanded:
-                    sql.append(self.calculated_sql(item, field))
+                    if funcs:
+                        func = functions.get(field.field_name.upper())
+                        if func:
+                            sql.append('%s(%s) %s "%s"' % (func.upper(), self.calculated_sql(item, field, with_as=False),
+                                self.FIELD_AS, field.field_name))
+                        else:
+                            sql.append(self.calculated_sql(item, field))
+                    else:
+                        sql.append(self.calculated_sql(item, field))
         if query.expanded:
             for i, field in enumerate(fields):
                 if i == 0 and summary:
@@ -755,8 +769,9 @@ class AbstractDB(object):
                         cond_field_name = '%s."%s"' % (self.table_alias(item), field.db_field_name)
                     else:
                         cond_field_name = '%s."%s"' % (self.lookup_table_alias(item, field), field.lookup_db_field)
-        if filter_type > consts.FILTER_CONTAINS_ALL:
-            filter_type -= consts.FILTER_CONTAINS_ALL
+        # L-filters (17-32) → client filters (1-16)
+        if filter_type > consts.FILTER_KEYS_CONTAINS:
+            filter_type -= consts.FILTER_KEYS_CONTAINS
         sql_literal = conditions.next_literal
         filter_sign = self.get_filter_sign(item, filter_type, value)
         if filter_type in (consts.FILTER_IN, consts.FILTER_NOT_IN):
@@ -773,6 +788,44 @@ class AbstractDB(object):
         elif filter_type == consts.FILTER_ISNULL:
             sql_literal = ''
             value = None
+        elif filter_type == consts.FILTER_KEYS_CONTAINS:
+            # KEYS field: value is an array from multi-select, e.g. ['2', '4']
+            # Check for intersection: field contains any of the selected values
+            # KEYS stores values as semicolon-separated with trailing ';', e.g. '1;2;3;'
+            # Use LIKE '%val;' for exact match
+            if not value or not isinstance(value, (list, tuple)) or len(value) == 0:
+                return '', None
+            
+            conditions_list = []
+            esc_found = False
+            for val in value:
+                val = to_str(val).strip()
+                if not val:
+                    continue
+                val, esc_f = self.escape_search(val, esc_char)
+                esc_found = esc_found or esc_f
+                # Three patterns to cover all positions:
+                # '%val;' — val not at end (has trailing ;)
+                # '%;val' — val at end (has leading ;)
+                # 'val' — single value (no separators at all)
+                param1 = conditions.next_literal
+                conditions.params.append('%' + val + ';%')
+                conditions_list.append('%s LIKE %s' % (cond_field_name, param1))
+                param2 = conditions.next_literal
+                conditions.params.append('%;' + val)
+                conditions_list.append('%s LIKE %s' % (cond_field_name, param2))
+                param3 = conditions.next_literal
+                conditions.params.append(val)
+                conditions_list.append('%s = %s' % (cond_field_name, param3))
+            
+            if not conditions_list:
+                return '', None
+            
+            sql = '(' + ' OR '.join(conditions_list) + ')'
+            if esc_found:
+                sql += " ESCAPE '" + esc_char + "'"
+            value = None
+            return sql, value
         elif filter_type in [consts.FILTER_CONTAINS, consts.FILTER_STARTWITH, consts.FILTER_ENDWITH]:
                 value = self.convert_field_value(field, value)
                 value, esc_found = self.escape_search(value, esc_char)

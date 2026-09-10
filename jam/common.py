@@ -111,21 +111,28 @@ class Consts(object):
         FILTER_IN, FILTER_NOT_IN, FILTER_RANGE, FILTER_ISNULL, \
         FILTER_EXACT, FILTER_CONTAINS, FILTER_STARTWITH, FILTER_ENDWITH, \
         FILTER_CONTAINS_ALL, \
+        FILTER_KEYS_CONTAINS, \
         FILTER_EQ_L, FILTER_NE_L, FILTER_LT_L, FILTER_LE_L, FILTER_GT_L, FILTER_GE_L, \
         FILTER_IN_L, FILTER_NOT_IN_L, FILTER_RANGE_L, FILTER_ISNULL_L, \
         FILTER_EXACT_L, FILTER_CONTAINS_L, FILTER_STARTWITH_L, FILTER_ENDWITH_L, \
         FILTER_CONTAINS_ALL_L, \
-         = range(1, 31)
+        FILTER_KEYS_CONTAINS_L, \
+         = range(1, 33)
     FILTER_STR = ('eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
         'range', 'isnull', 'exact', 'contains', 'startwith', 'endwith',
-        'contains_all', 'eq_l', 'ne_l', 'lt_l', 'le_l', 'gt_l', 'ge_l', 'in_l', 'not_in_l',
+        'contains_all',
+        'keys_contains',
+        'eq_l', 'ne_l', 'lt_l', 'le_l', 'gt_l', 'ge_l', 'in_l', 'not_in_l',
         'range_l', 'isnull_l', 'exact_l', 'contains_l', 'startwith_l', 'endwith_l',
-        'contains_all_l')
+        'contains_all_l',
+        'keys_contains_l')
     FILTER_SIGN = ('', '=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN',
-        'BETWEEN', 'ISNULL', '=', 'LIKE', 'LIKE', 'LIKE', 'CONTAINS_ALL')
+        'BETWEEN', 'ISNULL', '=', 'LIKE', 'LIKE', 'LIKE', 'CONTAINS_ALL',
+        'KEYS_CONTAINS')
     FILTER_STRING = ('EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'IN', 'NOT IN',
         'RANGE', 'ISNULL', 'EXACT', 'CONTAINS', 'STARTWITH', 'ENDWITH',
-        'CONTAINS_ALL')
+        'CONTAINS_ALL',
+        'KEYS_CONTAINS')
     REC_STATUS, REC_LOG_REC, REC_OLD_REC = range(3)
     ORDER_ASC, ORDER_DESC = range(2)
     STATE_INACTIVE, STATE_BROWSE, STATE_INSERT, STATE_EDIT, STATE_DELETE = range(5)

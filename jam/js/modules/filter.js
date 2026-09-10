@@ -23,7 +23,8 @@ class Filter {
                 this.field.field_help = this.filter_help;
                 this.field.field_placeholder = this.filter_placeholder;
                 this.field.multi_select_all = this.multi_select_all;
-                if (this.filter_type === consts.FILTER_IN || this.filter_type === consts.FILTER_NOT_IN) {
+                if (this.filter_type === consts.FILTER_IN || this.filter_type === consts.FILTER_NOT_IN ||
+                    this.filter_type === consts.FILTER_KEYS_CONTAINS) {
                     this.field.multi_select = true;
                 }
                 if (this.filter_type === consts.FILTER_RANGE) {
@@ -93,13 +94,11 @@ class Filter {
             if (this.field.data !== null && this.field1.data !== null) {
                 return [this.field.data, this.field1.data];
             }
-            else {
-                return null;
-            }
         }
         else {
-            return this.field.data;
+            result = this.field.data;
         }
+        return result;
     }
 
     set value(value) {

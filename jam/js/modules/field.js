@@ -285,6 +285,9 @@ class Field {
 
     _parse_keys(value) {
         if (value) {
+            if (Array.isArray(value)) {
+                return value;
+            }
             return value.split(';').map(function(i) { return parseInt(i, 10) });
         }
         else {
