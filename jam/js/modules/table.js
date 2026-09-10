@@ -1546,6 +1546,7 @@ class DBTable {
 
         heading = $element.find("thead tr:first");
         heading.empty();
+        $element.find("thead tr.thead-second-row").remove();
         if (this.options.multiselect) {
             if (this.item.master || !this.item._paginate) {
                 if (this.selections_get_all_selected()) {
@@ -1616,23 +1617,90 @@ class DBTable {
                 cell.append(bl);
             }
         }
-        for (i = 0; i < this.fields.length; i++) {
-            field = this.fields[i];
-            caption = field.field_caption;
-            if (order_fields[field.field_name]) {
-                caption = order_fields[field.field_name] + caption;
+        var CAPTION_SEPARATOR = ' * ';
+        var has_groups = this.fields.some(function(f) { return f.field_caption.indexOf(CAPTION_SEPARATOR) !== -1; });
+
+        if (!has_groups) {
+            // Original behavior without grouping
+            for (i = 0; i < this.fields.length; i++) {
+                field = this.fields[i];
+                caption = field.field_caption;
+                if (order_fields[field.field_name]) {
+                    caption = order_fields[field.field_name] + caption;
+                }
+                else if (sortable_fields[field.field_name]) {
+                    caption = sortable_fields[field.field_name] + caption;
+                }
+                div = $('<div class="th-container"><div class="th-table"><div class="text-center th-text ' + field.field_name +
+                    '" style="overflow: hidden">' + caption + '</div></div></div>');
+                cell = $('<th class="' + field.field_name + '" data-field_name="' + field.field_name + '" style="vertical-align: middle"></th>').append(div);
+                heading.append(cell);
+                if (this.options.title_line_count !== 0) {
+                    div.css('height', parseInt(cell.css('line-height'), 10) * this.options.title_line_count);
+                    cell.css('height', parseInt(cell.css('line-height'), 10) * this.options.title_line_count);
+                }
             }
-            else if (sortable_fields[field.field_name]) {
-                caption = sortable_fields[field.field_name] + caption;
+        } else {
+            // Grouping: first row - groups, second row - subheaders
+            var second_row = $('<tr class="thead-second-row"></tr>');
+            var gi = 0;
+            while (gi < this.fields.length) {
+                field = this.fields[gi];
+                var has_sep = field.field_caption.indexOf(CAPTION_SEPARATOR) !== -1;
+                var parts = has_sep ? field.field_caption.split(CAPTION_SEPARATOR) : null;
+                var group_caption = parts ? parts[0] : null;
+
+                if (group_caption) {
+                    // Count colspan - how many consecutive columns share the same group
+                    var colspan = 1;
+                    var gj = gi + 1;
+                    while (gj < this.fields.length) {
+                        var next_has_sep = this.fields[gj].field_caption.indexOf(CAPTION_SEPARATOR) !== -1;
+                        var next_parts = next_has_sep ? this.fields[gj].field_caption.split(CAPTION_SEPARATOR) : null;
+                        if (next_parts && next_parts[0] === group_caption) {
+                            colspan++;
+                            gj++;
+                        } else {
+                            break;
+                        }
+                    }
+                    // First row - group header with colspan
+                    cell = $('<th colspan="' + colspan + '" style="text-align: center; vertical-align: middle; border-bottom: 1px solid #dee2e6;">' + group_caption + '</th>');
+                    heading.append(cell);
+                    // Second row - subheaders for each column in the group
+                    for (var gk = gi; gk < gi + colspan; gk++) {
+                        var sub_field = this.fields[gk];
+                        var sub_parts = sub_field.field_caption.split(CAPTION_SEPARATOR);
+                        var sub_cap = sub_parts[1];
+                        if (order_fields[sub_field.field_name]) {
+                            sub_cap = order_fields[sub_field.field_name] + sub_cap;
+                        } else if (sortable_fields[sub_field.field_name]) {
+                            sub_cap = sortable_fields[sub_field.field_name] + sub_cap;
+                        }
+                        div = $('<div class="th-container"><div class="th-table"><div class="text-center th-text ' + sub_field.field_name +
+                            '" style="overflow: hidden">' + sub_cap + '</div></div></div>');
+                        cell = $('<th class="' + sub_field.field_name + '" data-field_name="' + sub_field.field_name + '" style="vertical-align: middle"></th>').append(div);
+                        second_row.append(cell);
+                    }
+                    gi += colspan;
+                } else {
+                    // Column without group - rowspan=2
+                    caption = field.field_caption;
+                    if (order_fields[field.field_name]) {
+                        caption = order_fields[field.field_name] + caption;
+                    } else if (sortable_fields[field.field_name]) {
+                        caption = sortable_fields[field.field_name] + caption;
+                    }
+                    div = $('<div class="th-container"><div class="th-table"><div class="text-center th-text ' + field.field_name +
+                        '" style="overflow: hidden">' + caption + '</div></div></div>');
+                    cell = $('<th class="' + field.field_name + '" data-field_name="' + field.field_name +
+                        '" rowspan="2" style="vertical-align: middle"></th>').append(div);
+                    heading.append(cell);
+                    gi++;
+                }
             }
-            div = $('<div class="th-container"><div class="th-table"><div class="text-center th-text ' + field.field_name +
-                '" style="overflow: hidden">' + caption + '</div></div></div>');
-            cell = $('<th class="' + field.field_name + '" data-field_name="' + field.field_name + '" style="vertical-align: middle"></th>').append(div);
-            heading.append(cell);
-            if (this.options.title_line_count !== 0) {
-                div.css('height', parseInt(cell.css('line-height'), 10) * this.options.title_line_count);
-                cell.css('height', parseInt(cell.css('line-height'), 10) * this.options.title_line_count);
-            }
+            // Add second header row to thead
+            heading.after(second_row);
         }
         heading.append('<th class="fake-column" style="display: None;></th>');
         if (this.options.title_callback) {
