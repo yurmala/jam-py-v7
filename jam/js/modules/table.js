@@ -955,6 +955,79 @@ class DBTable {
             }
         });
 
+        // Handle sort clicks on grouped header second row
+        this.$element.on('mousedown.table-title', 'table.outer-table thead tr.thead-second-row th', function(e) {
+            var $this = $(this),
+                index,
+                field_name = $this.data('field_name'),
+                desc = false,
+                sorted_fields;
+            if (field_name && self.options.sortable &&
+                (!self.options.sort_fields.length || self.options.sort_fields.indexOf(field_name) !== -1)) {
+
+                if (e.ctrlKey) {
+                    if (!self._multiple_sort) {
+                        self._multiple_sort = true;
+                    }
+                } else {
+                    if (self._multiple_sort) {
+                        self._sorted_fields = [];
+                        self._multiple_sort = false;
+                    }
+                }
+                sorted_fields = self._sorted_fields.slice();
+                if (self._multiple_sort) {
+                    index = -1;
+                    for (var i = 0; i < sorted_fields.length; i++) {
+                        if (sorted_fields[i][0] === field_name) {
+                            index = i;
+                            break;
+                        }
+                    }
+                    if (index === -1) {
+                        sorted_fields.push([field_name, false])
+                    } else {
+                        sorted_fields[index][1] = !sorted_fields[index][1];
+                    }
+                } else {
+                    if (sorted_fields.length && sorted_fields[0][0] === field_name) {
+                        sorted_fields[0][1] = !sorted_fields[0][1];
+                    } else {
+                        sorted_fields = [
+                            [field_name, false]
+                        ];
+                    }
+                }
+                self._sorted_fields = sorted_fields.slice();
+                self.item._open_params.__order = self._sorted_fields;
+                if (!self.item._paginate) {
+                    self.item._sort(self._sorted_fields);
+                } else {
+                    if (self.options.sort_add_primary) {
+                        field = self.item[self.item._primary_key]
+                        desc = self._sorted_fields[self._sorted_fields.length - 1][1]
+                        self._sorted_fields.push([field.field_name, desc]);
+                    }
+                    self.item.open({
+                        params: self.item._open_params,
+                        offset: 0
+                    }, true);
+                }
+            }
+        });
+
+        // Handle hover cursor on grouped header second row
+        this.$element.on('mousemove.table-title', 'table.outer-table thead tr.thead-second-row th', function(e) {
+            var $this = $(this),
+                field_name = $this.data('field_name');
+            if (self.options.sortable &&
+                (!self.options.sort_fields.length || self.options.sort_fields.indexOf(field_name) !== -1)) {
+                $this.css('cursor', 'pointer');
+            } else {
+                $this.css('cursor', 'default');
+            }
+        });
+
         this.$table.focus(function(e) {
             if (self.master_table) {
                 self.master_table.close_editor();
